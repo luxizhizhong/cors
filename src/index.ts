@@ -5,11 +5,13 @@
 import http from 'http'
 import Koa from 'koa'
 import Router from '@koa/router'
-import Cors from '@koa/cors'
+import cors from '@koa/cors'
 import fs, { read } from 'fs'
 import root from 'app-root-path'
 import path from 'path'
-import koaBody from 'koa-body'
+import body from 'koa-bodyparser'
+import got from 'got'
+import isURL from 'is-url'
 
 const App = new Koa
 
@@ -38,15 +40,22 @@ Routing
     ctx.body = await readFile('docs.txt')
   })
   .post('/cors', async ctx=> {
-    console.log('start')
-    const { site } = ctx.params
-    ctx.body = site
-    console.log(site)
+    const { site } = ctx.request.body
+    if (isURL(site)) {
+      const fetch = await got(site)
+      const { body } = fetch
+      ctx.body = body
+    } else {
+      (ctx as any).code = 404
+      ctx.body = {
+        msg: '参数错误'
+      }
+    }
   })
 
 // middleware
-App.use(Cors())
-App.use(koaBody())
+App.use(cors())
+App.use(body())
 
 App
 .use(Routing.routes())
